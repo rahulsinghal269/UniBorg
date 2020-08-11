@@ -1,3 +1,14 @@
+"""
+GDrive Client Module for Userbot
+
+Usage:- .drivesearch search_query
+        .drivedl drive_link
+        .gdrive filePath/replyToMessage
+
+Author:- Git: github.com/jaskaranSM | Tg:  https://t.me/Zero_cool7870
+"""
+
+
 import asyncio
 import aiohttp
 from gaggle import Client
