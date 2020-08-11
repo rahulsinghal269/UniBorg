@@ -40,7 +40,8 @@ def getAccessTokenDB():
 def saveAccessTokenDB(token): #bytes
     print("Updating Access Token in Database")
     previousToken = getAccessTokenDB()
-    driveDB.update_one(previousToken,{'$set':{"access_token":token}},upsert=True)
+    cur_filter = {"access_token":previousToken}
+    driveDB.update_one(cur_filter,{'$set':{"access_token":token}},upsert=True)
 
 def InitGDrive():
     if not os.path.exists(G_DRIVE_TOKEN_FILE):
@@ -68,11 +69,13 @@ class GDriveHelper:
         if os.path.exists(G_DRIVE_TOKEN_FILE):
             with open(G_DRIVE_TOKEN_FILE, 'rb') as f:
                 credentials = pickle.load(f)
-        if credentials is None or credentials.invalid:
-            if credentials and credentials.access_token_expired and credentials.refresh_token:
+        if credentials is None or not credentials.valid:
+            if credentials and credentials.expired and credentials.refresh_token:
                 credentials.refresh(Request())
                 with open(G_DRIVE_TOKEN_FILE,"rb") as token:
                     saveAccessTokenDB(token.read())
+                with open(G_DRIVE_TOKEN_FILE,"wb") as token:
+                    pickle.dump(credentials, token)
             else:
                 flow = OAuth2WebServerFlow(
                     Config.G_DRIVE_CLIENT_ID,
@@ -94,8 +97,8 @@ class GDriveHelper:
                         code = response.message.message.strip()
                 else:
                     code = input("Enter CODE: ")
-                credentials = flow.step2_exchange(code)
-                credentials.token = credentials.access_token
+                creds = flow.step2_exchange(code)
+                credentials = Client._make_credentials(token=creds.access_token,refresh_token=creds.refresh_token,id_token=creds.id_token,token_uri=creds.token_uri,client_id=creds.client_id,client_secret=creds.client_secret)
                 with open(G_DRIVE_TOKEN_FILE, 'wb') as token:
                     pickle.dump(credentials, token)
                 with open(G_DRIVE_TOKEN_FILE,"rb") as token:
@@ -104,7 +107,8 @@ class GDriveHelper:
 
     async def authorize(self,event=None):
         creds = await self.getCreds(event)
-        self.service = Client(session=self.session,token=creds.access_token,refresh_token=creds.refresh_token,id_token=creds.id_token,token_uri=creds.token_uri,client_id=creds.client_id,client_secret=creds.client_secret).drive("v3")
+        self.service = Client(session=self.session,credentials=creds).drive("v3")
+
 
     def getFileOps(self,file_path):
         mime_type = mimetypes.guess_type(file_path)[0]
@@ -201,7 +205,7 @@ class GDriveHelper:
                 await self.downloadFile(file.get("id"),newPath)
 
     async def getAccessToken(self):
-        return (await self.getCreds()).access_token
+        return (await self.getCreds()).token
 
     def getFileName(self,file_path):
         return file_path.rsplit("/",1)[-1]
