@@ -104,7 +104,7 @@ class GDriveHelper:
 
     async def authorize(self,event=None):
         creds = await self.getCreds(event)
-        self.service = Client(session=self.session,credentials=creds).drive('v3')
+        self.service = Client(session=self.session,token=creds.access_token,refresh_token=creds.refresh_token,id_token=creds.id_token,token_uri=creds.token_uri,client_id=creds.client_id,client_secret=creds.client_secret).drive("v3")
 
     def getFileOps(self,file_path):
         mime_type = mimetypes.guess_type(file_path)[0]
