@@ -216,7 +216,9 @@ class GDriveHelper:
 
     async def downloadFile(self,file_id,file_path):
         uri = f"https://www.googleapis.com/drive/v3/files/{file_id}"
-        access_token = await self.getAccessToken()
+        creds = await self.getCreds()
+        creds.refresh(Request())
+        access_token = creds.token
         queryString = {
             "includeItemsFromAllDrives": "true",
             "supportsAllDrives": "true",
