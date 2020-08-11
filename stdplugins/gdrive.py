@@ -35,7 +35,7 @@ def getAccessTokenDB():
     cursor = driveDB.find()
     for c in cursor:
         return c.get("access_token")
-    return {"access_token":b""}
+    return b""
 
 def saveAccessTokenDB(token): #bytes
     print("Updating Access Token in Database")
@@ -133,14 +133,20 @@ class GDriveHelper:
 
         media_body = MediaFileUpload(file_path,
                                      mimetype=mime_type,
+                                     resumable=True,
                                      chunksize=self.chunksize)
         response = await self.service.files.create(supportsTeamDrives=True,
                                                    body=file_metadata, media_body=media_body)
         
-        resJson = await response.json()
+        uploadLocation = response.headers.get("location")
+        file_id = ""
+        with open(file_path,"rb") as obj:
+            async with self.session.put(uploadLocation,data=obj) as resp:
+                resJson = await resp.json()
+        file_id = resJson.get("id")
         if not Config.IS_TEAM_DRIVE:
-            await self.setPermissions(resJson.get('id')) 
-        return resJson.get("id")
+            await self.setPermissions(file_id) 
+        return file_id
 
     async def createDirectory(self,directory_name,parent_id=None):
         file_metadata = {
