@@ -4,6 +4,7 @@ GDrive Client Module for Userbot
 Usage:- .drivesearch search_query
         .drivedl drive_link
         .gdrive filePath/replyToMessage
+        .drivemeta drive_link
 
 Author:- Git: github.com/jaskaranSM | Tg:  https://t.me/Zero_cool7870
 """
@@ -97,6 +98,7 @@ class GDriveHelper:
         self.__G_DRIVE_BASE_DOWNLOAD_URL = "https://drive.google.com/uc?id={}&export=download"
         self.__G_DRIVE_DIR_BASE_DOWNLOAD_URL = "https://drive.google.com/drive/folders/{}"
         self.chunksize = 50*1024*1024
+        self.file_count = 0
         self.is_complete = False
         self.previous_msg_text = ""
         self.transferred_bytes = 0
@@ -142,6 +144,7 @@ class GDriveHelper:
             if file.get("mimeType") == self.G_DRIVE_DIR_MIME_TYPE:
                 await self.getSizeDriveFolder(file.get('id'))
             else:
+                self.file_count += 1
                 self.size += int(file.get('size') if file.get('size') else 0)
 
     async def getSizeDrive(self,file_id):
@@ -151,6 +154,7 @@ class GDriveHelper:
             await self.getSizeDriveFolder(meta.get('id'))
             return self.size
         else:
+            self.file_count += 1
             return int(meta.get("size") if meta.get('size') else 0)
 
     def onTransferComplete(self):
@@ -450,6 +454,7 @@ async def gdrivemeta(event):
     size = await drive.getSizeDrive(file_id)
     msg += f"**Name:** `{meta.get('name')}`\n"
     msg += f"**Size:** `{humanbytes(size)}`\n"
+    msg += f"**FileCount:** `{drive.file_count}`\n"
     msg += f"**MimeType:** `{meta.get('mimeType')}`\n"
     msg += f"**Trashed:** `{meta.get('trashed')}`\n"
     msg += f"**Description:** `{meta.get('description')}`\n"
