@@ -96,9 +96,9 @@ def getProgressString(drive_obj):
 
 async def postTextToDogBin(text):
     async with aiohttp.ClientSession() as session:
-        async with session.post('https://del.dog/documents',data=text) as response:
+        async with session.post('https://nekobin.com/api/documents',json= {"content": text}) as response:
             respJson = await response.json()
-            return f"https://del.dog/{respJson.get('key')}"
+            return f"https://nekobin.com/{respJson.get('result').get('key')}"
 
 
 class Folder:
@@ -439,6 +439,25 @@ class GDriveHelper:
                 self.size += int(file.get('size') if file.get('size') else 0)
                 self.file_count += 1
 
+    async def copyFile(self,file_id,dest_id):
+        body = {
+            'parents': [dest_id]
+        }
+        res = await self.service.files.copy(supportsAllDrives=True,fileId=file_id,body=body)
+        resJson = await res.json()
+        file_id = resJson.get('id')
+        if not Config.IS_TEAM_DRIVE:
+            await self.setPermissions(file_id) 
+        return file_id
+
+    async def copyFolderFromStorage(self,storage,parent_id):
+        for item in storage:
+            if item.mimeType == G_DRIVE_DIR_MIME_TYPE:
+                newDir = await self.createDirectory(item.name,parent_id)
+                await self.copyFolderFromStorage(item.children,newDir)
+            else:
+                await self.copyFile(item.id,parent_id)
+
     def traverseStorage(self,storage):
         for item in storage:
             if item.mimeType == G_DRIVE_DIR_MIME_TYPE:
@@ -494,6 +513,36 @@ async def drivesch(event):
             msg += "⁍ [{}]({}) ({})".format(file.get('name'),drive.formatLink(file.get('id'),folder=False),humanbytes(int(file.get('size'))))+"\n"
     await event.edit(msg)
 
+
+@borg.on(admin_cmd(pattern="gcopy ?(.*)", allow_sudo=True))
+async def driveclone(event):
+    if event.fwd_from:
+        return
+    input_str = event.pattern_match.group(1).strip()
+    mone = await event.reply('Processing..')
+    drive = GDriveHelper()
+    await drive.authorize(event)
+    try:
+        fileId = drive.parseLink(input_str)
+        meta = await drive.getMetadata(fileId)
+    except Exception as e:
+        await mone.edit(f"BadLink: {e}")
+        return 
+    link = ""
+    if meta.get('mimeType') == G_DRIVE_DIR_MIME_TYPE:
+        await drive.traverseFolder(fileId)
+        newDir = await drive.createDirectory(meta.get('name'),Config.GDRIVE_FOLDER_ID)
+        await drive.copyFolderFromStorage(drive.getLocalStorage(),newDir)
+        link = drive.formatLink(newDir)
+        size = drive.size
+        fileCount = drive.file_count
+    else:
+        file_id = await drive.copyFile(meta.get('id'),Config.GDRIVE_FOLDER_ID)
+        link = drive.formatLink(file_id,folder=False)
+        size = int(meta.get('size') if meta.get('size') else 0)
+        fileCount = 1
+    await mone.edit(f"__GDrive Copy:__\n[{meta.get('name')}]({link})\n**Size:** `{humanbytes(size)}`\n**FileCount:** `{fileCount}`")
+    
 
 @borg.on(admin_cmd(pattern="drivedl ?(.*)", allow_sudo=True))
 async def gdrivedownload(event):
