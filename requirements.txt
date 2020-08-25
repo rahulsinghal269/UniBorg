@@ -8,5 +8,6 @@ instaloader
 coffeehouse>=2.2.2
 anime-downloader
 pylast
+pymongo
 chatterbot-corpus
 -r ./requirements-stdborg.txt
