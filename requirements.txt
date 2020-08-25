@@ -10,6 +10,7 @@ anime-downloader
 pylast
 chatterbot-corpus
 cowsay
+pymongo
 gaggle
 tracemoepy
 -r ./requirements-stdborg.txt
