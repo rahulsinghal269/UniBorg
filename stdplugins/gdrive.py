@@ -316,7 +316,7 @@ class GDriveHelper:
 
         uploadLocation = response.headers.get("location")
         file_id = ""
-        async with self.session.put(uploadLocation,data=self.fileSender(file_path)) as resp:
+        async with self.session.put(uploadLocation,data=self.fileSender(file_path),timeout=None) as resp:
             resJson = await resp.json()
         file_id = resJson.get("id")
         if not Config.IS_TEAM_DRIVE:
@@ -425,7 +425,7 @@ class GDriveHelper:
             "includeTeamDriveItems":"true"
         }
         headers = {"accept-encoding":'gzip;q=0,deflate,sdch','authorization': f'Bearer {access_token}'}
-        response = await self.session.get(uri,params=queryString,headers=headers)
+        response = await self.session.get(uri,params=queryString,headers=headers,timeout=None)
         with open(file_path,"wb") as file_writer:
             async for chunk, _ in response.content.iter_chunks():
                 file_writer.write(chunk)
